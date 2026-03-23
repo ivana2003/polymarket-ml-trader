@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Polymarket ML Trader — Results Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #111118; --surface2: #1a1a24;
+      --border: #2a2a3a; --green: #00ff88; --red: #ff4466;
+      --yellow: #ffcc00; --blue: #4488ff; --text: #e8e8f0; --text-dim: #888899;
+      --font-mono: "Space Mono", monospace; --font-display: "Syne", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; }
+    body::before { content:""; position:fixed; inset:0;
+      background-image: linear-gradient(rgba(0,255,136,0.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,255,136,0.03) 1px,transparent 1px);
+      background-size:40px 40px; pointer-events:none; z-index:0; }
+    .container { max-width:1200px; margin:0 auto; padding:0 24px; position:relative; z-index:1; }
+    header { padding:48px 0 32px; border-bottom:1px solid var(--border); }
+    .badge { display:inline-block; font-size:11px; color:var(--green); border:1px solid var(--green);
+      padding:4px 10px; letter-spacing:0.15em; text-transform:uppercase; margin-bottom:16px;
+      animation:pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    h1 { font-family:var(--font-display); font-size:clamp(28px,5vw,52px); font-weight:800; line-height:1.1; }
+    h1 span { color:var(--green); }
+    .subtitle { font-size:13px; color:var(--text-dim); margin-top:12px; }
+    .tags { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+    .tag { font-size:11px; padding:3px 8px; background:var(--surface2); color:var(--text-dim); border:1px solid var(--border); }
+    .section-label { font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--green);
+      margin-bottom:20px; display:flex; align-items:center; gap:12px; }
+    .section-label::after { content:""; flex:1; height:1px; background:var(--border); }
+    .stats-section, .chart-section, .bucket-section, .features-section { padding:40px 0; }
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+    .stat-card { background:var(--surface); border:1px solid var(--border); padding:20px;
+      position:relative; overflow:hidden; transition:border-color 0.2s,transform 0.2s; }
+    .stat-card:hover { border-color:var(--green); transform:translateY(-2px); }
+    .stat-card::before { content:""; position:absolute; top:0;left:0;right:0; height:2px;
+      background:var(--green); opacity:0; transition:opacity 0.2s; }
+    .stat-card:hover::before { opacity:1; }
+    .stat-label { font-size:10px; color:var(--text-dim); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; }
+    .stat-value { font-family:var(--font-display); font-size:28px; font-weight:800; color:var(--green); line-height:1; }
+    .stat-value.red{color:var(--red)} .stat-value.yellow{color:var(--yellow)} .stat-value.blue{color:var(--blue)}
+    .stat-sub { font-size:11px; color:var(--text-dim); margin-top:6px; }
+    .chart-container { background:var(--surface); border:1px solid var(--border); padding:24px; }
+    .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+    .chart-title { font-family:var(--font-display); font-size:16px; font-weight:600; }
+    .bucket-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+    .bucket-card { background:var(--surface); border:1px solid var(--border); padding:24px; position:relative; }
+    .bucket-card.near{border-left:3px solid var(--green)} .bucket-card.mid{border-left:3px solid var(--yellow)}
+    .bucket-card.far{border-left:3px solid var(--red); opacity:0.6}
+    .bucket-name { font-family:var(--font-display); font-size:20px; font-weight:800; margin-bottom:4px; }
+    .bucket-name.near{color:var(--green)} .bucket-name.mid{color:var(--yellow)} .bucket-name.far{color:var(--red)}
+    .bucket-desc { font-size:11px; color:var(--text-dim); margin-bottom:20px; }
+    .bucket-stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .bucket-stat-label { font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.1em; }
+    .bucket-stat-value { font-size:18px; font-weight:700; color:var(--text); margin-top:2px; }
+    .excluded-tag { position:absolute; top:12px; right:12px; font-size:9px; padding:3px 6px;
+      background:rgba(255,68,102,0.15); border:1px solid var(--red); color:var(--red); }
+    .feature-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; }
+    .feature-item { background:var(--surface); border:1px solid var(--border); padding:12px 16px;
+      display:flex; align-items:center; gap:12px; font-size:12px; transition:border-color 0.15s; }
+    .feature-item:hover{border-color:var(--green)}
+    .feature-name{color:var(--green);font-weight:700;flex:1} .feature-desc{color:var(--text-dim);font-size:11px;}
+    footer { border-top:1px solid var(--border); padding:32px 0; text-align:center; font-size:12px; color:var(--text-dim); }
+    footer a{color:var(--green);text-decoration:none;}
+    .fade-in{opacity:0;transform:translateY(16px);animation:fadeIn 0.5s ease forwards;}
+    @keyframes fadeIn{to{opacity:1;transform:translateY(0)}}
+    .fade-in:nth-child(1){animation-delay:0.1s} .fade-in:nth-child(2){animation-delay:0.2s}
+    .fade-in:nth-child(3){animation-delay:0.3s} .fade-in:nth-child(4){animation-delay:0.4s}
+    .fade-in:nth-child(5){animation-delay:0.5s} .fade-in:nth-child(6){animation-delay:0.6s}
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+      <div>
+        <div class="badge">● Live Backtest Results</div>
+        <h1>Polymarket<br/><span>ML Trader</span></h1>
+        <p class="subtitle">Machine learning system for prediction market trading</p>
+        <div class="tags">
+          <span class="tag">XGBoost</span><span class="tag">GroupKFold CV</span>
+          <span class="tag">Kelly Sizing</span><span class="tag">Polymarket CLOB API</span>
+          <span class="tag">Orderflow 001</span>
+        </div>
+      </div>
+      <div style="text-align:right;padding-top:8px">
+        <div style="font-size:11px;color:var(--text-dim)">Period</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:800">2022–2024</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:8px">Universe</div>
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:800">92 Markets</div>
+      </div>
+    </div>
+  </header>
+  <section class="stats-section">
+    <div class="section-label">Performance Metrics</div>
+    <div class="stats-grid">
+      <div class="stat-card fade-in"><div class="stat-label">Total Return</div><div class="stat-value">+311%</div><div class="stat-sub">$1,000 → $4,116 USDC</div></div>
+      <div class="stat-card fade-in"><div class="stat-label">Sharpe Ratio</div><div class="stat-value">7.89</div><div class="stat-sub">Annualized</div></div>
+      <div class="stat-card fade-in"><div class="stat-label">Calmar Ratio</div><div class="stat-value">4.69</div><div class="stat-sub">Return / Max Drawdown</div></div>
+      <div class="stat-card fade-in"><div class="stat-label">Profit Factor</div><div class="stat-value yellow">1.66</div><div class="stat-sub">Gross profit / Gross loss</div></div>
+      <div class="stat-card fade-in"><div class="stat-label">Win Rate</div><div class="stat-value blue">45.7%</div><div class="stat-sub">6,191 total trades</div></div>
+      <div class="stat-card fade-in"><div class="stat-label">Max Drawdown</div><div class="stat-value red">-$664</div><div class="stat-sub">vs $4,116 final capital</div></div>
+    </div>
+  </section>
+  <section class="chart-section">
+    <div class="section-label">Equity Curve</div>
+    <div class="chart-container">
+      <div class="chart-header">
+        <span class="chart-title">Capital Growth (USDC) — Near + Mid Strategy</span>
+        <span style="font-size:12px;color:var(--text-dim)">2% spread · 5% max position · Stop loss -5%</span>
+      </div>
+      <canvas id="equityChart" height="300"></canvas>
+    </div>
+  </section>
+  <section class="bucket-section">
+    <div class="section-label">Model Performance by Time Bucket</div>
+    <div class="bucket-grid">
+      <div class="bucket-card near">
+        <div class="bucket-name near">NEAR</div>
+        <div class="bucket-desc">&lt; 7 days to resolution</div>
+        <div class="bucket-stats">
+          <div><div class="bucket-stat-label">AUC</div><div class="bucket-stat-value" style="color:var(--green)">0.777</div></div>
+          <div><div class="bucket-stat-label">Win Rate</div><div class="bucket-stat-value" style="color:var(--green)">52.0%</div></div>
+          <div><div class="bucket-stat-label">Trades</div><div class="bucket-stat-value">1,150</div></div>
+          <div><div class="bucket-stat-label">PnL</div><div class="bucket-stat-value" style="color:var(--green)">+$1,652</div></div>
+        </div>
+      </div>
+      <div class="bucket-card mid">
+        <div class="bucket-name mid">MID</div>
+        <div class="bucket-desc">7 – 60 days to resolution</div>
+        <div class="bucket-stats">
+          <div><div class="bucket-stat-label">AUC</div><div class="bucket-stat-value" style="color:var(--yellow)">0.682</div></div>
+          <div><div class="bucket-stat-label">Win Rate</div><div class="bucket-stat-value" style="color:var(--yellow)">44.3%</div></div>
+          <div><div class="bucket-stat-label">Trades</div><div class="bucket-stat-value">5,041</div></div>
+          <div><div class="bucket-stat-label">PnL</div><div class="bucket-stat-value" style="color:var(--yellow)">+$1,464</div></div>
+        </div>
+      </div>
+      <div class="bucket-card far">
+        <div class="excluded-tag">EXCLUDED</div>
+        <div class="bucket-name far">FAR</div>
+        <div class="bucket-desc">&gt; 60 days to resolution</div>
+        <div class="bucket-stats">
+          <div><div class="bucket-stat-label">AUC</div><div class="bucket-stat-value">0.655</div></div>
+          <div><div class="bucket-stat-label">Win Rate</div><div class="bucket-stat-value">35.0%</div></div>
+          <div><div class="bucket-stat-label">Trades</div><div class="bucket-stat-value">4,846</div></div>
+          <div><div class="bucket-stat-label">PnL</div><div class="bucket-stat-value" style="color:var(--red)">-$531</div></div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--text-dim);margin-top:12px">
+      ⚠️ Far bucket excluded: without outlier events (moves &gt; 40%), no consistent edge detected.
+    </p>
+  </section>
+  <section class="features-section">
+    <div class="section-label">Feature Set (20 features)</div>
+    <div class="feature-grid">
+      <div class="feature-item"><span class="feature-name">price_ma3/7/14</span><span class="feature-desc">Rolling means</span></div>
+      <div class="feature-item"><span class="feature-name">price_std7/14</span><span class="feature-desc">Local volatility</span></div>
+      <div class="feature-item"><span class="feature-name">price_diff1/6/12/24</span><span class="feature-desc">Multi-lag momentum</span></div>
+      <div class="feature-item"><span class="feature-name">price_diff*_norm</span><span class="feature-desc">Vol-normalized momentum</span></div>
+      <div class="feature-item"><span class="feature-name">price_relative</span><span class="feature-desc">Position in hist. range</span></div>
+      <div class="feature-item"><span class="feature-name">drift_from_start</span><span class="feature-desc">Total drift since open</span></div>
+      <div class="feature-item"><span class="feature-name">dist_from_half</span><span class="feature-desc">Distance from 0.5</span></div>
+      <div class="feature-item"><span class="feature-name">price_vs_ma</span><span class="feature-desc">Price / MA7 ratio</span></div>
+      <div class="feature-item"><span class="feature-name">price_zscore14</span><span class="feature-desc">Z-score (mid only)</span></div>
+      <div class="feature-item"><span class="feature-name">days_to_close</span><span class="feature-desc">Time to resolution</span></div>
+      <div class="feature-item"><span class="feature-name">price_x_near/far</span><span class="feature-desc">Price × bucket interaction</span></div>
+    </div>
+  </section>
+  <footer>
+    <p>Built for <a href="https://orderflow001.devpost.com">Orderflow 001 Hackathon</a> · Quantitative Trading Track</p>
+    <p style="margin-top:8px;font-size:11px">Ivana Crescenzi · 2026</p>
+  </footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+  const labels = ["Dec 22","Jan 23","Feb 23","Mar 23","Apr 23","May 23","Jun 23",
+    "Jul 23","Aug 23","Sep 23","Oct 23","Nov 23","Dec 23",
+    "Jan 24","Feb 24","Mar 24","Apr 24","May 24","Jun 24",
+    "Jul 24","Aug 24","Sep 24","Oct 24","Nov 24"];
+  const capital = [1000,1180,2100,3280,3340,3300,3280,3260,3240,3100,3050,3060,3080,
+    3120,3150,3180,3200,3220,3300,4100,4050,3980,4050,4116];
+  const ctx = document.getElementById("equityChart").getContext("2d");
+  const gradient = ctx.createLinearGradient(0,0,0,300);
+  gradient.addColorStop(0,"rgba(0,255,136,0.3)");
+  gradient.addColorStop(1,"rgba(0,255,136,0.0)");
+  new Chart(ctx,{
+    type:"line",
+    data:{labels,datasets:[
+      {label:"Capital (USDC)",data:capital,borderColor:"#00ff88",backgroundColor:gradient,
+       borderWidth:2.5,pointRadius:0,pointHoverRadius:5,fill:true,tension:0.3},
+      {label:"Initial Capital",data:Array(labels.length).fill(1000),
+       borderColor:"rgba(255,255,255,0.15)",borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}
+    ]},
+    options:{responsive:true,interaction:{intersect:false,mode:"index"},
+      plugins:{
+        legend:{labels:{color:"#888899",font:{family:"Space Mono",size:11}}},
+        tooltip:{backgroundColor:"#1a1a24",borderColor:"#2a2a3a",borderWidth:1,
+          titleColor:"#00ff88",bodyColor:"#e8e8f0",
+          callbacks:{label:ctx=>`  $${ctx.parsed.y.toLocaleString()} USDC`}}
+      },
+      scales:{
+        x:{grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#888899",font:{family:"Space Mono",size:10}}},
+        y:{grid:{color:"rgba(255,255,255,0.04)"},
+          ticks:{color:"#888899",font:{family:"Space Mono",size:10},callback:v=>`$${v.toLocaleString()}`}}
+      }
+    }
+  });
+</script>
+</body>
+</html>
