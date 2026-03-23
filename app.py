@@ -135,4 +135,4 @@ def index():
 if __name__ == "__main__":
     print("Starting Polymarket ML Trader server...")
     print("Dashboard: http://localhost:5000")
-    app.run(debug=False, port=5000)
+    app.run(debug=False, port=8080)
