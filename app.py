@@ -147,63 +147,6 @@ def ml_signal_from_history(market):
 
 
 
-def compute_signal(prices_raw):
-    """Compute trading signal from price history."""
-    if len(prices_raw) < 10:
-        return None
-    prices = [p["p"] for p in prices_raw]
-    p = np.array(prices)
-    current = p[-1]
-    ma7  = p[-min(7,  len(p)):].mean()
-    ma14 = p[-min(14, len(p)):].mean()
-    std7 = p[-min(7,  len(p)):].std() + 1e-9
-    diff1  = p[-1] - p[-2]  if len(p) > 1  else 0
-    diff24 = p[-1] - p[-25] if len(p) > 24 else 0
-    drift  = p[-1] - p[0]
-    p_min, p_max = p.min(), p.max()
-    price_rel = (current - p_min) / (p_max - p_min + 1e-9)
-    zscore = (current - ma14) / std7
-
-    # Rule-based signal (simplified model logic)
-    score = 0.5
-    # Momentum signals
-    if diff24 > 0.02: score += 0.08
-    if diff24 < -0.02: score -= 0.08
-    if diff1 > 0.01: score += 0.04
-    if diff1 < -0.01: score -= 0.04
-    # Mean reversion signals
-    if zscore > 2.0: score -= 0.10  # overbought -> short
-    if zscore < -2.0: score += 0.10  # oversold -> long
-    # Trend signals
-    if current > ma7 > ma14: score += 0.06
-    if current < ma7 < ma14: score -= 0.06
-    # Position signals
-    if price_rel < 0.15: score += 0.05  # near historical low
-    if price_rel > 0.85: score -= 0.05  # near historical high
-
-    score = max(0.05, min(0.95, score))
-
-    if score > 0.65:
-        signal = "BUY"
-        confidence = score
-    elif score < 0.35:
-        signal = "SELL"
-        confidence = 1 - score
-    else:
-        signal = "HOLD"
-        confidence = 0.5
-
-    return {
-        "signal": signal,
-        "confidence": round(confidence, 3),
-        "score": round(score, 3),
-        "current_price": round(current, 4),
-        "ma7": round(ma7, 4),
-        "zscore": round(zscore, 3),
-        "diff24": round(diff24, 4),
-        "drift": round(drift, 4),
-        "n_candles": len(prices)
-    }
 
 @app.route("/api/signals")
 def get_signals():

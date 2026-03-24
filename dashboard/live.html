@@ -136,7 +136,7 @@ async function loadSignals() {
   btn.textContent = "⟳ LOADING...";
   status.textContent = "Fetching live data from Polymarket...";
   try {
-    const resp = await fetch("http://127.0.0.1:8080/api/signals");
+    const resp = await fetch("/api/signals");
     const data = await resp.json();
     if (data.status !== "ok") throw new Error(data.message);
     const signals = data.signals;
