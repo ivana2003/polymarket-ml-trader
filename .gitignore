@@ -8,3 +8,6 @@ __pycache__/
 .env
 venv/
 .DS_Store
+data/*.csv
+models/__pycache__/
+__pycache__/
