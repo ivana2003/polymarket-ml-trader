@@ -97,7 +97,6 @@ def build_live_features(market_id, end_date_str, prices_raw):
     return df_live.iloc[-1].copy()
 
 def ml_signal_from_history(market):
-    print("ML SIGNAL FUNCTION HIT")
     prices_raw = get_recent_prices(market["token_yes"], hours=72)
     if len(prices_raw) < 30:
         return None
