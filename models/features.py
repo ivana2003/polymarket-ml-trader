@@ -18,10 +18,13 @@ def build_features(df):
         df[f"price_diff{lag}_norm"] = (df[f"price_diff{lag}"] / (df["price_std7"] + 1e-9)).clip(-5, 5)
     df["dist_from_half"]   = (df["price"] - 0.5).abs()
     df["drift_from_start"] = grp.transform(lambda x: x - x.iloc[0])
-    df["price_min"]        = grp.transform("min")
-    df["price_max"]        = grp.transform("max")
-    df["price_relative"]   = (df["price"] - df["price_min"]) / (df["price_max"] - df["price_min"] + 1e-9)
-    df["price_vs_ma"]      = df["price"] / (df["price_ma7"] + 1e-9)
+
+    # FIX: expanding min/max invece di global min/max (no leakage)
+    df["price_min"] = grp.transform(lambda x: x.expanding().min())
+    df["price_max"] = grp.transform(lambda x: x.expanding().max())
+
+    df["price_relative"] = (df["price"] - df["price_min"]) / (df["price_max"] - df["price_min"] + 1e-9)
+    df["price_vs_ma"]    = df["price"] / (df["price_ma7"] + 1e-9)
     roll_mean = grp.transform(lambda x: x.rolling(14, min_periods=3).mean())
     roll_std  = grp.transform(lambda x: x.rolling(14, min_periods=3).std())
     df["price_zscore14"] = ((df["price"] - roll_mean) / (roll_std + 1e-9)).clip(-4, 4).fillna(0)
